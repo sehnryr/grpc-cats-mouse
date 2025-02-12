@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package cat;
+
+service CatService {
+  // Notification d'une souris détectée
+  rpc Notify(MouseLocation) returns (Ack);
+}
+
+message MouseLocation {
+  string node = 1;
+  int32 port = 2;
+}
+
+message Ack {
+  string message = 1;
+}

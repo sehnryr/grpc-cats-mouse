@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package mouse;
+
+service MouseService {
+  // Répond "SQUIIIIIK" à une requête "MEOW"
+  rpc Meow(Empty) returns (Reply);
+  // Répond "SQUIIIK SQUIIIK COUIC!" à une commande "FSSSSHHH"
+  rpc Catch(Empty) returns (Reply);
+}
+
+message Empty {}
+
+message Reply {
+  string message = 1;
+}
