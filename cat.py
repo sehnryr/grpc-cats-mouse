@@ -3,7 +3,6 @@
 from concurrent import futures
 import os
 import time
-import random
 import grpc
 import threading
 import itertools
@@ -49,6 +48,13 @@ class CatState:
         with self.lock:
             return self.captured
 
+    def handle_capture(self, duration):
+        self.set_captured(True)
+        threading.Timer(duration, self.release_capture).start()
+
+    def release_capture(self):
+        self.set_captured(False)
+
 
 state = CatState()
 
@@ -62,6 +68,15 @@ class CatServiceServicer(cat_pb2_grpc.CatServiceServicer):
             attempt_capture(request.node, request.port)
         return cat_pb2.Ack(message="Notification reçue")
 
+    def CaptureNotification(
+        self, request: cat_pb2.CaptureRequest, context: grpc.ServicerContext
+    ) -> cat_pb2.CaptureAck:
+        # Lorsqu'un chat reçoit cette notification, il passe en mode capturé.
+        state.handle_capture(request.capture_duration)
+        return cat_pb2.CaptureAck(
+            message=f"{CAT_ID} capturé pour {request.capture_duration} secondes"
+        )
+
 
 def start_cat_server():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=5))
@@ -72,21 +87,6 @@ def start_cat_server():
     server.start()
 
     return server
-
-
-def simulate_animal_services():
-    while True:
-        time.sleep(1)
-        if random.random() < 0.01:
-            if not state.is_captured():
-                state.set_captured(True)
-                print(f"[Animal Services] Capture du {CAT_ID}!")
-                threading.Timer(3, release_capture).start()
-
-
-def release_capture():
-    state.set_captured(False)
-    print(f"[Animal Services] Libération du {CAT_ID}.")
 
 
 def attempt_capture(node, port):
@@ -152,10 +152,6 @@ def scan_for_mouse():
 
 if __name__ == "__main__":
     server = start_cat_server()
-
-    # Démarrage de la simulation d'Animal Services
-    t_services = threading.Thread(target=simulate_animal_services, daemon=True)
-    t_services.start()
 
     # Démarrage du scan
     print(f"[{CAT_ID}] Démarrage du scan sur les noeuds : {CLUSTER_NODES}")

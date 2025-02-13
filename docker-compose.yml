@@ -52,6 +52,20 @@ services:
     networks:
       - cluster_net
 
+  animal_services:
+    build:
+      context: .
+      dockerfile: Dockerfile.animal_services
+    container_name: animal_services
+    environment:
+      - CAT_HOSTS=cat1,cat2,cat3
+    depends_on:
+      - cat1
+      - cat2
+      - cat3
+    networks:
+      - cluster_net
+
 networks:
   cluster_net:
     driver: bridge

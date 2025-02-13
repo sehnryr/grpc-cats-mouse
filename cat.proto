@@ -3,8 +3,10 @@ syntax = "proto3";
 package cat;
 
 service CatService {
-  // Notification d'une souris détectée
+  // Notification d'une souris détectée par un autre chat
   rpc Notify(MouseLocation) returns (Ack);
+  // Notification envoyée par Animal Services pour capturer le chat
+  rpc CaptureNotification(CaptureRequest) returns (CaptureAck);
 }
 
 message MouseLocation {
@@ -13,5 +15,14 @@ message MouseLocation {
 }
 
 message Ack {
+  string message = 1;
+}
+
+message CaptureRequest {
+  string cat_id = 1;
+  int32 capture_duration = 2; // en secondes
+}
+
+message CaptureAck {
   string message = 1;
 }
