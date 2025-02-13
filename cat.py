@@ -126,19 +126,26 @@ def notify_peers(node, port, captured):
         if peer.strip() == CAT_ID:
             continue
 
-        try:
-            channel = grpc.insecure_channel(f"{peer.strip()}:{CAT_SERVICE_PORT}")
-            stub = cat_pb2_grpc.CatServiceStub(channel)
+        while True:
+            try:
+                channel = grpc.insecure_channel(f"{peer.strip()}:{CAT_SERVICE_PORT}")
+                stub = cat_pb2_grpc.CatServiceStub(channel)
 
-            if captured:
-                response = stub.Notify(
-                    cat_pb2.MouseLocation(node=node, port=port), timeout=1
-                )
-                print(f"[{CAT_ID}] Notification envoyée à {peer} : {response.message}")
-            else:
-                stub.PortRead(cat_pb2.MouseLocation(node=node, port=port), timeout=1)
-        except Exception as e:
-            print(f"[{CAT_ID}] Erreur lors de la notification à {peer} : {e}")
+                if captured:
+                    response = stub.Notify(
+                        cat_pb2.MouseLocation(node=node, port=port), timeout=1
+                    )
+                    print(
+                        f"[{CAT_ID}] Notification envoyée à {peer} : {response.message}"
+                    )
+                else:
+                    stub.PortRead(
+                        cat_pb2.MouseLocation(node=node, port=port), timeout=1
+                    )
+                break
+            except Exception:
+                time.sleep(0.1)
+                continue
 
 
 def scan_for_mouse():
