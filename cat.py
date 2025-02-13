@@ -156,6 +156,8 @@ if __name__ == "__main__":
     # Démarrage de la simulation d'Animal Services
     t_services = threading.Thread(target=simulate_animal_services, daemon=True)
     t_services.start()
+
+    # Démarrage du scan
     print(f"[{CAT_ID}] Démarrage du scan sur les noeuds : {CLUSTER_NODES}")
     scan_for_mouse()
 
