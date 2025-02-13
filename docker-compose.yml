@@ -1,48 +1,52 @@
 services:
   mouse:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.mouse
     container_name: mouse
-    command: ["python", "-u", "mouse.py"]
     networks:
       - cluster_net
 
   cat1:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.cat
     container_name: cat1
     environment:
       - CAT_ID=cat1
       - CLUSTER_NODES=mouse,cat1,cat2,cat3
       - PEER_CATS=cat1,cat2,cat3
       - CAT_SERVICE_PORT=60000
-    command: ["python", "-u", "cat.py"]
     depends_on:
       - mouse
     networks:
       - cluster_net
 
   cat2:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.cat
     container_name: cat2
     environment:
       - CAT_ID=cat2
       - CLUSTER_NODES=mouse,cat1,cat2,cat3
       - PEER_CATS=cat1,cat2,cat3
       - CAT_SERVICE_PORT=60000
-    command: ["python", "-u", "cat.py"]
     depends_on:
       - mouse
     networks:
       - cluster_net
 
   cat3:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.cat
     container_name: cat3
     environment:
       - CAT_ID=cat3
       - CLUSTER_NODES=mouse,cat1,cat2,cat3
       - PEER_CATS=cat1,cat2,cat3
       - CAT_SERVICE_PORT=60000
-    command: ["python", "-u", "cat.py"]
     depends_on:
       - mouse
     networks:
