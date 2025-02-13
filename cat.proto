@@ -3,6 +3,8 @@ syntax = "proto3";
 package cat;
 
 service CatService {
+  // Notification que le port à été lu mais que la souris n'a pas été détectée
+  rpc PortRead(MouseLocation) returns (Ack);
   // Notification d'une souris détectée par un autre chat
   rpc Notify(MouseLocation) returns (Ack);
   // Notification envoyée par Animal Services pour capturer le chat

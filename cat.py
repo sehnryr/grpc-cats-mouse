@@ -4,6 +4,7 @@ from concurrent import futures
 import os
 import time
 import grpc
+import random
 import threading
 import itertools
 
@@ -25,9 +26,15 @@ PORT_MAX = 50100
 
 class CatState:
     def __init__(self):
+        # remove peer cats from cluster nodes
+        mouse_nodes = list(filter(lambda node: node not in PEER_CATS, CLUSTER_NODES))
+
         self.mouse_found = None
         self.captured = False
         self.lock = threading.Lock()
+        self.node_port = list(
+            itertools.product(mouse_nodes, range(PORT_MIN, PORT_MAX + 1))
+        )
 
     def set_mouse_found(self, node, port):
         with self.lock:
@@ -55,11 +62,25 @@ class CatState:
     def release_capture(self):
         self.set_captured(False)
 
+    def get_node_port(self):
+        idx = random.randint(0, len(self.node_port) - 1)
+        return self.node_port.pop(idx)
+
+    def delete_node_port(self, node, port):
+        try:
+            self.node_port.remove((node, port))
+        except ValueError:
+            pass
+
 
 state = CatState()
 
 
 class CatServiceServicer(cat_pb2_grpc.CatServiceServicer):
+    def PortRead(self, request, context):
+        state.delete_node_port(request.node, request.port)
+        return cat_pb2.Ack(message="Notification reçue")
+
     def Notify(self, request, context):
         if state.set_mouse_found(request.node, request.port):
             print(
@@ -99,7 +120,7 @@ def attempt_capture(node, port):
         print(f"[{CAT_ID}] Échec de l'attrape sur {node}:{port} : {e}")
 
 
-def notify_peers(node, port):
+def notify_peers(node, port, captured):
     for peer in PEER_CATS:
         # Éviter de notifier soi-même
         if peer.strip() == CAT_ID:
@@ -108,18 +129,19 @@ def notify_peers(node, port):
         try:
             channel = grpc.insecure_channel(f"{peer.strip()}:{CAT_SERVICE_PORT}")
             stub = cat_pb2_grpc.CatServiceStub(channel)
-            response = stub.Notify(
-                cat_pb2.MouseLocation(node=node, port=port), timeout=1
-            )
-            print(f"[{CAT_ID}] Notification envoyée à {peer} : {response.message}")
+
+            if captured:
+                response = stub.Notify(
+                    cat_pb2.MouseLocation(node=node, port=port), timeout=1
+                )
+                print(f"[{CAT_ID}] Notification envoyée à {peer} : {response.message}")
+            else:
+                stub.PortRead(cat_pb2.MouseLocation(node=node, port=port), timeout=1)
         except Exception as e:
             print(f"[{CAT_ID}] Erreur lors de la notification à {peer} : {e}")
 
 
 def scan_for_mouse():
-    idx = 0
-    node_port = list(itertools.product(CLUSTER_NODES, range(PORT_MIN, PORT_MAX + 1)))
-
     while True:
         # Si la souris a déjà été détectée, utiliser cette info et tenter l'attrape
         found = state.get_mouse_found()
@@ -130,22 +152,28 @@ def scan_for_mouse():
             return
 
         if not state.is_captured():
-            (node, port) = node_port[idx]
-            idx = (idx + 1) % len(node_port)
+            try:
+                (node, port) = state.get_node_port()
+            except IndexError:
+                print(f"[{CAT_ID}] Aucune souris trouvée.")
+                return
+
+            print(f"[{CAT_ID}] Tentative de connexion à {node} sur le port {port}")
 
             try:
                 channel = grpc.insecure_channel(f"{node}:{port}")
                 stub = mouse_pb2_grpc.MouseServiceStub(channel)
                 response = stub.Meow(mouse_pb2.Empty(), timeout=0.5)
+
                 if response.message.strip() == "SQUIIIIIK":
                     if state.set_mouse_found(node, port):
                         print(f"[{CAT_ID}] Souris détectée sur {node} au port {port}.")
                         # Notifier les autres chats via gRPC
-                        notify_peers(node, port)
+                        notify_peers(node, port, captured=True)
                         attempt_capture(node, port)
                     return
             except Exception:
-                pass
+                notify_peers(node, port, captured=False)
 
         time.sleep(0.1)
 
